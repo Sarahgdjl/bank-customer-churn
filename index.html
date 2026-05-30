@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Churn Analytics Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2330;
+    --accent: #e84545;
+    --accent2: #f0a500;
+    --accent3: #3ecfcf;
+    --green: #2dd67b;
+    --text: #e8ecf4;
+    --muted: #6b7794;
+    --label: #8b95b0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; }
+  .logo span { color: var(--accent); }
+  .badge {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+    padding: 3px 8px; border-radius: 3px; letter-spacing: 0.5px;
+  }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .ts { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+
+  .dashboard { padding: 24px 28px; display: flex; flex-direction: column; gap: 20px; }
+  .section-label {
+    font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted);
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px;
+  }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 18px;
+    position: relative; overflow: hidden; transition: border-color 0.2s;
+  }
+  .kpi:hover { border-color: var(--kpi-color, var(--accent)); }
+  .kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; background: var(--kpi-color, var(--accent));
+  }
+  .kpi-label {
+    font-size: 10px; color: var(--label); letter-spacing: 0.5px;
+    margin-bottom: 8px; text-transform: uppercase; font-family: 'DM Mono', monospace;
+  }
+  .kpi-value {
+    font-family: 'Syne', sans-serif; font-size: 26px;
+    font-weight: 800; line-height: 1; color: var(--kpi-color, var(--text));
+  }
+  .kpi-sub { font-size: 10px; color: var(--muted); margin-top: 5px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-31 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 20px;
+  }
+  .card-title {
+    font-family: 'DM Mono', monospace; font-size: 10px; color: var(--label);
+    letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .card-title span { color: var(--muted); font-size: 9px; }
+
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-name {
+    font-family: 'DM Mono', monospace; font-size: 10px; color: var(--label);
+    width: 62px; flex-shrink: 0; text-align: right;
+  }
+  .bar-track {
+    flex: 1; height: 8px; background: var(--surface2);
+    border-radius: 2px; overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 2px;
+    background: var(--bar-color, var(--accent));
+    transition: width 1.2s cubic-bezier(.16,1,.3,1); width: 0;
+  }
+  .bar-pct { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text); width: 36px; }
+
+  .donut-wrap { display: flex; align-items: center; justify-content: center; gap: 24px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { font-size: 11px; color: var(--label); }
+  .legend-val { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); margin-left: 4px; }
+
+  .heatmap-grid { display: grid; grid-template-columns: 70px repeat(2, 1fr); gap: 3px; }
+  .hm-cell {
+    padding: 10px 6px; border-radius: 4px; text-align: center;
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+  }
+  .hm-header {
+    background: transparent; color: var(--label); font-size: 9px;
+    letter-spacing: 1px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hm-label {
+    background: transparent; color: var(--label); font-size: 10px;
+    display: flex; align-items: center; padding-left: 4px;
+  }
+
+  .model-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .model-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .model-name { font-size: 11px; color: var(--text); width: 130px; flex-shrink: 0; }
+  .model-metric { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); width: 80px; }
+  .model-bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .model-bar-fill { height: 100%; border-radius: 2px; transition: width 1.4s cubic-bezier(.16,1,.3,1); width: 0; }
+  .winner-tag {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    background: color-mix(in srgb, var(--green) 12%, transparent);
+    color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
+    padding: 2px 6px; border-radius: 3px;
+  }
+
+  .age-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .age-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .age-bar-wrap {
+    width: 100%; height: 80px; display: flex; align-items: flex-end;
+    background: var(--surface2); border-radius: 3px; overflow: hidden;
+  }
+  .age-bar-inner { width: 100%; border-radius: 3px 3px 0 0; transition: height 1.3s cubic-bezier(.16,1,.3,1); height: 0%; }
+  .age-pct { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--text); }
+  .age-label { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--muted); text-align: center; }
+
+  .insights { display: flex; flex-direction: column; gap: 8px; }
+  .insight {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 10px 12px; background: var(--surface2);
+    border-radius: 6px; border-left: 2px solid var(--insight-color, var(--accent));
+  }
+  .insight-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+  .insight-text { font-size: 11px; color: var(--label); line-height: 1.5; }
+  .insight-text strong { color: var(--text); }
+
+  footer {
+    border-top: 1px solid var(--border); padding: 14px 28px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer-left { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .kpi { animation: fadeUp 0.5s ease both; }
+  .kpi:nth-child(1) { animation-delay: 0.05s; }
+  .kpi:nth-child(2) { animation-delay: 0.10s; }
+  .kpi:nth-child(3) { animation-delay: 0.15s; }
+  .kpi:nth-child(4) { animation-delay: 0.20s; }
+  .kpi:nth-child(5) { animation-delay: 0.25s; }
+  .card { animation: fadeUp 0.5s ease both; animation-delay: 0.3s; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">CHURN<span>.</span>ANALYTICS</div>
+  <div class="header-right">
+    <span class="ts">Bank Customer Dataset · n=10,000</span>
+    <div class="badge">PHASE 4</div>
+  </div>
+</header>
+
+<div class="dashboard">
+
+  <div>
+    <div class="section-label">Key Performance Indicators</div>
+    <div class="kpi-row">
+      <div class="kpi" style="--kpi-color: var(--accent)">
+        <div class="kpi-label">Churn Rate</div>
+        <div class="kpi-value">20.4%</div>
+        <div class="kpi-sub">2,038 of 10,000 customers</div>
+      </div>
+      <div class="kpi" style="--kpi-color: var(--green)">
+        <div class="kpi-label">Retention Rate</div>
+        <div class="kpi-value">79.6%</div>
+        <div class="kpi-sub">7,962 active customers</div>
+      </div>
+      <div class="kpi" style="--kpi-color: var(--accent2)">
+        <div class="kpi-label">Avg Age · Churned</div>
+        <div class="kpi-value">44.8</div>
+        <div class="kpi-sub">vs 37.4 yrs retained</div>
+      </div>
+      <div class="kpi" style="--kpi-color: var(--accent3)">
+        <div class="kpi-label">Avg Balance · Churned</div>
+        <div class="kpi-value">€91k</div>
+        <div class="kpi-sub">vs €73k retained (+25%)</div>
+      </div>
+      <div class="kpi" style="--kpi-color: var(--accent)">
+        <div class="kpi-label">Best Model AUC</div>
+        <div class="kpi-value">0.869</div>
+        <div class="kpi-sub">XGBoost · F1 = 0.623</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title">Churn by Geography <span>RATE %</span></div>
+      <div id="geo-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Churn by Num of Products <span>RATE %</span></div>
+      <div id="prod-bars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Churn by Gender <span>SPLIT</span></div>
+      <div class="donut-wrap" style="margin-top:8px">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle cx="55" cy="55" r="40" fill="none" stroke="#1e2330" stroke-width="18"/>
+          <circle cx="55" cy="55" r="40" fill="none" stroke="#e84545" stroke-width="18"
+            stroke-dasharray="139.8 110.5" stroke-dashoffset="0"
+            transform="rotate(-90 55 55)"/>
+          <circle cx="55" cy="55" r="40" fill="none" stroke="#3ecfcf" stroke-width="18"
+            stroke-dasharray="110.5 139.8" stroke-dashoffset="-139.8"
+            transform="rotate(-90 55 55)"/>
+          <text x="55" y="51" text-anchor="middle" font-family="Syne,sans-serif" font-size="14" font-weight="800" fill="#e8ecf4">2,038</text>
+          <text x="55" y="64" text-anchor="middle" font-family="DM Mono,monospace" font-size="8" fill="#6b7794">CHURNED</text>
+        </svg>
+        <div class="donut-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent)"></div>
+            <div>
+              <div class="legend-label">Female <span class="legend-val">25.1%</span></div>
+              <div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">1,139 churned</div>
+            </div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:var(--accent3)"></div>
+            <div>
+              <div class="legend-label">Male <span class="legend-val">16.5%</span></div>
+              <div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">899 churned</div>
+            </div>
+          </div>
+          <div style="margin-top:4px;padding:6px 8px;background:var(--surface2);border-radius:4px">
+            <div style="font-size:9px;color:var(--muted);font-family:'DM Mono',monospace">Female churn rate</div>
+            <div style="font-size:12px;color:var(--accent);font-family:'Syne',sans-serif;font-weight:700">1.52× higher</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Churn Rate by Age Band <span>PEAK: 48–58</span></div>
+      <div class="age-grid" id="age-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Churn % — Geography × Gender <span>INTERACTION</span></div>
+      <div class="heatmap-grid" id="heatmap"></div>
+    </div>
+  </div>
+
+  <div class="grid-31">
+    <div class="card">
+      <div class="card-title">Model Performance Comparison <span>PHASE 3 RESULTS</span></div>
+      <div id="models"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Key Insights</div>
+      <div class="insights">
+        <div class="insight" style="--insight-color: var(--accent)">
+          <div class="insight-icon">⚠</div>
+          <div class="insight-text"><strong>Products 3 & 4</strong> show 83–100% churn. Immediate intervention needed.</div>
+        </div>
+        <div class="insight" style="--insight-color: var(--accent2)">
+          <div class="insight-icon">📍</div>
+          <div class="insight-text"><strong>Germany</strong> churns at 32.4% — nearly 2× France & Spain.</div>
+        </div>
+        <div class="insight" style="--insight-color: var(--accent3)">
+          <div class="insight-icon">👤</div>
+          <div class="insight-text"><strong>German females</strong> at 37.6% — highest single segment.</div>
+        </div>
+        <div class="insight" style="--insight-color: var(--green)">
+          <div class="insight-icon">✓</div>
+          <div class="insight-text"><strong>Active members</strong> churn at 14.3% vs 26.9% inactive — engagement works.</div>
+        </div>
+        <div class="insight" style="--insight-color: var(--accent)">
+          <div class="insight-icon">🎂</div>
+          <div class="insight-text"><strong>Ages 48–58</strong> hit 55.3% churn — the highest-risk life stage.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="footer-left">Bank Customer Churn · Phase 4 Dashboard · 10,000 records · XGBoost AUC 0.869</div>
+  <div class="footer-left">Complain column excluded — leakage risk</div>
+</footer>
+
+<script>
+const geoData = [
+  { name:'Germany', pct:32.4, color:'#e84545' },
+  { name:'Spain',   pct:16.7, color:'#f0a500' },
+  { name:'France',  pct:16.2, color:'#3ecfcf' },
+];
+const geoContainer = document.getElementById('geo-bars');
+geoData.forEach(d => {
+  geoContainer.innerHTML += `<div class="bar-row">
+    <div class="bar-name">${d.name}</div>
+    <div class="bar-track"><div class="bar-fill" data-pct="${d.pct/40*100}" style="--bar-color:${d.color}"></div></div>
+    <div class="bar-pct">${d.pct}%</div></div>`;
+});
+
+const prodData = [
+  { name:'1 prod', pct:27.7, color:'#f0a500' },
+  { name:'2 prod', pct:7.6,  color:'#2dd67b' },
+  { name:'3 prod', pct:82.7, color:'#e84545' },
+  { name:'4 prod', pct:100,  color:'#e84545' },
+];
+const prodContainer = document.getElementById('prod-bars');
+prodData.forEach(d => {
+  prodContainer.innerHTML += `<div class="bar-row">
+    <div class="bar-name">${d.name}</div>
+    <div class="bar-track"><div class="bar-fill" data-pct="${d.pct}" style="--bar-color:${d.color}"></div></div>
+    <div class="bar-pct">${d.pct}%</div></div>`;
+});
+
+const ageData = [
+  {band:'18-28',pct:7.2}, {band:'28-38',pct:9.6}, {band:'38-48',pct:24.6},
+  {band:'48-58',pct:55.3},{band:'58-68',pct:39.5}, {band:'68+',pct:12.0},
+];
+const ageGrid = document.getElementById('age-grid');
+ageData.forEach(d => {
+  const color = d.band==='48-58' ? '#e84545' : d.pct>20 ? '#f0a500' : '#3ecfcf';
+  ageGrid.innerHTML += `<div class="age-col">
+    <div class="age-pct">${d.pct}%</div>
+    <div class="age-bar-wrap"><div class="age-bar-inner" data-h="${d.pct}" style="background:${color}"></div></div>
+    <div class="age-label">${d.band}</div></div>`;
+});
+
+const hmData = [
+  {geo:'France', female:20.3,male:12.7},
+  {geo:'Germany',female:37.6,male:27.8},
+  {geo:'Spain',  female:21.2,male:13.1},
+];
+function heatColor(v) {
+  if (v>=35) return {bg:'rgba(232,69,69,0.35)',text:'#ff7a7a'};
+  if (v>=25) return {bg:'rgba(232,69,69,0.20)',text:'#f0a090'};
+  if (v>=18) return {bg:'rgba(240,165,0,0.18)', text:'#f0c060'};
+  return {bg:'rgba(62,207,207,0.12)',text:'#3ecfcf'};
+}
+const hm = document.getElementById('heatmap');
+hm.innerHTML = `<div class="hm-cell hm-header"></div>
+  <div class="hm-cell hm-header">FEMALE</div>
+  <div class="hm-cell hm-header">MALE</div>`;
+hmData.forEach(d => {
+  const cf=heatColor(d.female), cm=heatColor(d.male);
+  hm.innerHTML += `
+    <div class="hm-cell hm-label" style="font-family:'DM Mono',monospace;font-size:10px">${d.geo}</div>
+    <div class="hm-cell" style="background:${cf.bg};color:${cf.text}">${d.female}%</div>
+    <div class="hm-cell" style="background:${cm.bg};color:${cm.text}">${d.male}%</div>`;
+});
+
+const modelData = [
+  {name:'XGBoost',            auc:0.8688,f1:0.6230,color:'#e84545',winner:true},
+  {name:'LightGBM',           auc:0.8669,f1:0.6168,color:'#2dd67b',winner:false},
+  {name:'Logistic Regression',auc:0.8500,f1:0.5776,color:'#9467bd',winner:false},
+];
+const modelsEl = document.getElementById('models');
+modelData.forEach(d => {
+  modelsEl.innerHTML += `<div class="model-row">
+    <div class="model-name">${d.name} ${d.winner?'<span class="winner-tag">BEST</span>':''}</div>
+    <div class="model-metric">AUC ${d.auc.toFixed(4)}</div>
+    <div class="model-bar-track"><div class="model-bar-fill" data-pct="${(d.auc-0.5)/0.5*100}" style="background:${d.color}"></div></div>
+    <div class="model-metric" style="text-align:right">F1 ${d.f1.toFixed(4)}</div></div>`;
+});
+
+setTimeout(() => {
+  document.querySelectorAll('.bar-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
+  document.querySelectorAll('.model-bar-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
+  document.querySelectorAll('.age-bar-inner').forEach(el => { el.style.height = el.dataset.h + '%'; });
+}, 200);
+</script>
+</body>
+</html>
