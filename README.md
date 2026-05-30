@@ -2,7 +2,7 @@
 
 An end-to-end data science project predicting which bank customers are likely to churn — from raw data exploration through SQL data warehouse design, machine learning, and an interactive dashboard.
 
-**Live dashboard →** [yourusername.github.io/bank-customer-churn](https://yourusername.github.io/bank-customer-churn)
+**Live dashboard →** [yourusername.github.io/bank-customer-churn](https://Sarahgdjl.github.io/bank-customer-churn)
 
 ---
 
